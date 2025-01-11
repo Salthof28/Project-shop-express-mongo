@@ -1,5 +1,6 @@
 const path = require('path');
 const express = require('express');
+const methodOverride = require('method-override'); // library untuk mengedit data
 const mongoose = require('mongoose');
 const app = express();
 
@@ -17,6 +18,7 @@ mongoose.connect('mongodb://127.0.0.1/shop_db').then((result) => {
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: true})); // Untuk bisa mengambil value dari method post, maka express.urlencoded perlu dipanggil. Ini merupakan fitur di library express
+app.use(methodOverride('_method')); // dipanggil untuk bisa menggunakan library overridenya
 
 // link home
 app.get('/', (req,res) => {
@@ -25,9 +27,17 @@ app.get('/', (req,res) => {
 
 // link list product
 app.get('/products', async (req,res) => {
-    const products = await Product.find({})
-    // console.log(products);
-    res.render('products/index', {products});
+    const {category} = req.query;
+    if(category){
+        const products = await Product.find({category});
+        // console.log(products);
+        res.render('products/index', {products, category});  
+    }
+    else{
+        const products = await Product.find({});
+        // console.log(products);
+        res.render('products/index', {products, category: 'All'});
+    }
 })
 
 // link untuk form menyimpan data product
@@ -47,6 +57,25 @@ app.post('/products', async (req,res) => {
 app.get('/products/:id', async (req,res) => {
     const product = await Product.findById(req.params.id); // menggunakan params karena method get, jika method post menggunakan req.body
     res.render('products/detail', {product});
+})
+
+// link untuk mengedit data
+app.get('/products/:id/edit', async (req,res) => {
+    const product = await Product.findById(req.params.id); // menggunakan params karena method get, jika method post menggunakan req.body
+    res.render('products/edit', {product});
+})
+
+app.put('/products/:id', async (req,res) => {
+    const {id} = req.params;
+    const product = await Product.findByIdAndUpdate(id, req.body, {runValidators: true}); // menggunakan params karena method get, jika method post menggunakan req.body
+    res.redirect(`/products/${product._id}`);
+})
+
+// untuk proses delete data
+app.delete('/products/:id', async (req,res) => {
+    const {id} = req.params;
+    const product = await Product.findByIdAndDelete(id); // menggunakan params karena method get, jika method post menggunakan req.body
+    res.redirect(`/products`);
 })
 
 app.listen(3000, () => {
